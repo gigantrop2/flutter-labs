@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'calculator_screen.dart';
 import 'history_screen.dart';
+import '../data/local_storage.dart';
+import '../data/time_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,38 +13,78 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final List<Map<String, String>> _sharedHistory = [];
-  String? _expressionFromHistory;
-  
-  // Список экранов
-  late final List<Widget> _screens;
+  List<Map<String, dynamic>> _sharedHistory = [];
+  late List<Widget> _screens;
+  final TimeService _timeService = TimeService();
 
   @override
   void initState() {
     super.initState();
+    _screens = [];
+    _loadHistoryAndInitializeScreens();
+  }
+
+  Future<void> _loadHistoryAndInitializeScreens() async {
+    await _loadHistory();
     
     _screens = [
       CalculatorScreen(
-        onAddToHistory: (expression, result) {
-          _sharedHistory.add({
+        onAddToHistory: (expression, result) async {
+          final timeResult = await _timeService.getCurrentTime();
+          final DateTime timestamp;
+          
+          if (timeResult['success'] == true) {
+            timestamp = DateTime.parse(timeResult['datetime']);
+          } else {
+            timestamp = _timeService.getLocalTime();
+          }
+          
+          final newItem = {
             'expression': expression,
             'result': result,
+            'timestamp': timestamp.toIso8601String(),
+            'fromApi': timeResult['success'] == true,
+          };
+          
+          setState(() {
+            _sharedHistory.insert(0, newItem);
           });
+          
+          await _saveHistory();
         },
         history: _sharedHistory,
-        initialExpression: _expressionFromHistory,
       ),
       HistoryScreen(
         history: _sharedHistory,
         onSelectExpression: (expression) {
-          // Сохраняем выражение и переключаемся на калькулятор
           setState(() {
-            _expressionFromHistory = expression;
             _selectedIndex = 0;
           });
         },
+        onClearHistory: () async {
+          await _clearHistory();
+        },
       ),
     ];
+    
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    _sharedHistory = await LocalStorage.loadHistory();
+  }
+
+  Future<void> _saveHistory() async {
+    await LocalStorage.saveHistory(_sharedHistory);
+  }
+
+  Future<void> _clearHistory() async {
+    setState(() {
+      _sharedHistory.clear();
+    });
+    await LocalStorage.clearHistory();
   }
 
   void _onItemTapped(int index) {
@@ -53,23 +95,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Обновляем экран калькулятора с новым выражением
-    _screens[0] = CalculatorScreen(
-      onAddToHistory: (expression, result) {
-        _sharedHistory.add({
-          'expression': expression,
-          'result': result,
-        });
-      },
-      history: _sharedHistory,
-      initialExpression: _expressionFromHistory,
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_selectedIndex == 0 ? 'Калькулятор' : 'История'),
       ),
-      body: _screens[_selectedIndex],
+      body: _screens.isNotEmpty 
+          ? _screens[_selectedIndex]
+          : const Center(child: CircularProgressIndicator()),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(

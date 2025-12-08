@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 class CalculatorScreen extends StatefulWidget {
   final Function(String, String)? onAddToHistory;
-  final List<Map<String, String>> history;
-  final String? initialExpression;
+  final List<Map<String, dynamic>> history;  // ← ИЗМЕНИТЬ ТУТ
   
   const CalculatorScreen({
     super.key,
     this.onAddToHistory,
-    required this.history,
-    this.initialExpression,
+    required this.history,  // ← И ТУТ ТИП
   });
 
   @override
@@ -19,30 +17,6 @@ class CalculatorScreen extends StatefulWidget {
 class _CalculatorScreenState extends State<CalculatorScreen> {
   String _display = '0';
   List<String> _expression = [];
-
-  @override
-  void initState() {
-    super.initState();
-    
-    // Если есть начальное выражение из истории - используем его
-    if (widget.initialExpression != null && widget.initialExpression!.isNotEmpty) {
-      _expression = widget.initialExpression!.split(' ');
-      _updateDisplay();
-    }
-  }
-
-  @override
-  void didUpdateWidget(CalculatorScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    
-    // Если изменилось начальное выражение - обновляем
-    if (widget.initialExpression != oldWidget.initialExpression && 
-        widget.initialExpression != null && 
-        widget.initialExpression!.isNotEmpty) {
-      _expression = widget.initialExpression!.split(' ');
-      _updateDisplay();
-    }
-  }
 
   void _onButtonPressed(String buttonText) {
     setState(() {
@@ -128,7 +102,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       if (tokens[i] == '×' || tokens[i] == '÷') {
         final left = double.parse(tokens[i - 1]);
         final right = double.parse(tokens[i + 1]);
-        double result = tokens[i] == '×' ? left * right : left / right;
+        double result;
+        
+        if (tokens[i] == '×') {
+          result = left * right;
+        } else {
+          if (right == 0) throw Exception('Деление на ноль');
+          result = left / right;
+        }
         
         tokens[i - 1] = result.toString();
         tokens.removeRange(i, i + 2);
@@ -139,8 +120,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     double result = double.parse(tokens[0]);
     for (int i = 1; i < tokens.length; i += 2) {
       final right = double.parse(tokens[i + 1]);
-      if (tokens[i] == '+') result += right;
-      else if (tokens[i] == '-') result -= right;
+      if (tokens[i] == '+') {
+        result += right;
+      } else if (tokens[i] == '-') {
+        result -= right;
+      } else if (tokens[i] == '%') {
+        result = result % right;
+      }
     }
     
     return result;
@@ -159,7 +145,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             reverse: true,
             child: Text(
               _display,
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
