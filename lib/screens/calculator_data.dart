@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 class CalculatorScreen extends StatefulWidget {
   final Function(String, String)? onAddToHistory;
   final List<Map<String, String>> history;
-  final String? initialExpression;
   
   const CalculatorScreen({
     super.key,
     this.onAddToHistory,
     required this.history,
-    this.initialExpression,
   });
 
   @override
@@ -20,36 +18,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String _display = '0';
   List<String> _expression = [];
 
-  @override
-  void initState() {
-    super.initState();
-    
-    // Если есть начальное выражение из истории - используем его
-    if (widget.initialExpression != null && widget.initialExpression!.isNotEmpty) {
-      _expression = widget.initialExpression!.split(' ');
-      _updateDisplay();
-    }
-  }
-
-  @override
-  void didUpdateWidget(CalculatorScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    
-    // Если изменилось начальное выражение - обновляем
-    if (widget.initialExpression != oldWidget.initialExpression && 
-        widget.initialExpression != null && 
-        widget.initialExpression!.isNotEmpty) {
-      _expression = widget.initialExpression!.split(' ');
-      _updateDisplay();
-    }
-  }
-
   void _onButtonPressed(String buttonText) {
     setState(() {
       if (buttonText == 'C') {
+        // Полный сброс
         _display = '0';
         _expression.clear();
       } else if (buttonText == '⌫') {
+        // Удаление последнего символа или элемента
         if (_expression.isNotEmpty) {
           final last = _expression.last;
           if (last.length > 1) {
@@ -60,11 +36,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         }
         _updateDisplay();
       } else if (buttonText == '=') {
+        // Вычисление выражения
         if (_expression.isNotEmpty) {
           try {
             final result = _evaluateExpression();
             final expressionStr = _expression.join(' ');
             
+            // Добавляем в историю через callback
             if (widget.onAddToHistory != null) {
               widget.onAddToHistory!(expressionStr, result.toString());
             }
@@ -77,6 +55,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           }
         }
       } else if (['+', '-', '×', '÷', '%'].contains(buttonText)) {
+        // Оператор
         if (_expression.isEmpty) {
           _expression.add('0');
         }
@@ -89,6 +68,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         }
         _updateDisplay();
       } else {
+        // Цифры или точка
         if (_expression.isEmpty) {
           _expression.add(buttonText);
         } else {
@@ -124,11 +104,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     
     List<String> tokens = List.from(_expression);
     
+    // Сначала умножение и деление
     for (int i = 1; i < tokens.length; i += 2) {
       if (tokens[i] == '×' || tokens[i] == '÷') {
         final left = double.parse(tokens[i - 1]);
         final right = double.parse(tokens[i + 1]);
-        double result = tokens[i] == '×' ? left * right : left / right;
+        double result;
+        
+        if (tokens[i] == '×') {
+          result = left * right;
+        } else {
+          if (right == 0) throw Exception('Деление на ноль');
+          result = left / right;
+        }
         
         tokens[i - 1] = result.toString();
         tokens.removeRange(i, i + 2);
@@ -136,11 +124,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       }
     }
     
+    // Затем сложение, вычитание и остаток
     double result = double.parse(tokens[0]);
     for (int i = 1; i < tokens.length; i += 2) {
       final right = double.parse(tokens[i + 1]);
-      if (tokens[i] == '+') result += right;
-      else if (tokens[i] == '-') result -= right;
+      if (tokens[i] == '+') {
+        result += right;
+      } else if (tokens[i] == '-') {
+        result -= right;
+      } else if (tokens[i] == '%') {
+        result = result % right;
+      }
     }
     
     return result;
@@ -150,6 +144,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Дисплей
         Container(
           padding: const EdgeInsets.all(20),
           alignment: Alignment.centerRight,
@@ -159,11 +154,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             reverse: true,
             child: Text(
               _display,
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
         const Divider(height: 1),
+        // Клавиатура
         Expanded(
           child: GridView.count(
             crossAxisCount: 4,

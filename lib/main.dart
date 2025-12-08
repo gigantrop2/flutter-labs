@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/calculator_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const SmartCalcApp());
@@ -14,8 +14,10 @@ class SmartCalcApp extends StatelessWidget {
       title: 'SmartCalc',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
-      home: const CalculatorScreen(),
+      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
