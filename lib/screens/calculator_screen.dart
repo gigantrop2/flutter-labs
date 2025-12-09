@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 class CalculatorScreen extends StatefulWidget {
   final Function(String, String)? onAddToHistory;
-  final List<Map<String, dynamic>> history;  // ← ИЗМЕНИТЬ ТУТ
+  final List<Map<String, dynamic>> history;
+  final String? initialExpression;  // ← ДОБАВЛЯЕМ НОВЫЙ ПАРАМЕТР
   
   const CalculatorScreen({
     super.key,
     this.onAddToHistory,
-    required this.history,  // ← И ТУТ ТИП
+    required this.history,
+    this.initialExpression,  // ← ДОБАВЛЯЕМ
   });
 
   @override
@@ -18,6 +20,35 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String _display = '0';
   List<String> _expression = [];
 
+  @override
+  void initState() {
+    super.initState();
+    // ЕСЛИ ЕСТЬ ВЫРАЖЕНИЕ ДЛЯ ЗАГРУЗКИ - ЗАГРУЖАЕМ
+    if (widget.initialExpression != null) {
+      _loadExpression(widget.initialExpression!);
+    }
+  }
+
+  @override
+  void didUpdateWidget(CalculatorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // ЕСЛИ ИЗМЕНИЛОСЬ ВЫРАЖЕНИЕ - ОБНОВЛЯЕМ
+    if (widget.initialExpression != oldWidget.initialExpression && 
+        widget.initialExpression != null) {
+      _loadExpression(widget.initialExpression!);
+    }
+  }
+
+  void _loadExpression(String expression) {
+    // Разбиваем выражение на части (например: "10 + 5" → ["10", "+", "5"])
+    final tokens = expression.split(' ');
+    setState(() {
+      _expression = tokens;
+      _updateDisplay();
+    });
+  }
+
+  // ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ...
   void _onButtonPressed(String buttonText) {
     setState(() {
       if (buttonText == 'C') {
