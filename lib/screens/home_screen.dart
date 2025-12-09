@@ -16,11 +16,11 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _sharedHistory = [];
   late List<Widget> _screens;
   final TimeService _timeService = TimeService();
+  String? _selectedExpression;  // ← ХРАНИМ ВЫБРАННОЕ ВЫРАЖЕНИЕ
 
   @override
   void initState() {
     super.initState();
-    _screens = [];
     _loadHistoryAndInitializeScreens();
   }
 
@@ -48,17 +48,21 @@ class _HomeScreenState extends State<HomeScreen> {
           
           setState(() {
             _sharedHistory.insert(0, newItem);
+            _selectedExpression = null;  // ← СБРАСЫВАЕМ ПОСЛЕ ДОБАВЛЕНИЯ
           });
           
           await _saveHistory();
         },
         history: _sharedHistory,
+        initialExpression: _selectedExpression,  // ← ПЕРЕДАЕМ ВЫРАЖЕНИЕ
       ),
       HistoryScreen(
         history: _sharedHistory,
         onSelectExpression: (expression) {
           setState(() {
-            _selectedIndex = 0;
+            _selectedExpression = expression;  // ← СОХРАНЯЕМ ВЫБРАННОЕ
+            _selectedIndex = 0;  // ПЕРЕКЛЮЧАЕМСЯ НА КАЛЬКУЛЯТОР
+            _loadHistoryAndInitializeScreens();  // ← ОБНОВЛЯЕМ ЭКРАН
           });
         },
         onClearHistory: () async {
@@ -83,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _clearHistory() async {
     setState(() {
       _sharedHistory.clear();
+      _selectedExpression = null;
     });
     await LocalStorage.clearHistory();
   }
